@@ -1,5 +1,5 @@
-import { Snowflake, Wifi } from 'lucide-react';
-import type { Lang, UserRole, TranslationDict } from '@/types';
+import { Snowflake, Wifi, Sprout, Warehouse } from 'lucide-react';
+import type { Lang, TranslationDict, UserRole } from '@/types';
 
 interface HeaderProps {
   t: TranslationDict;
@@ -58,16 +58,33 @@ export default function Header({
       </div>
 
       <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-        <select
-          value={userRole}
-          onChange={(e) => setUserRole(e.target.value as UserRole)}
-          className="bg-slate-100 border border-slate-300 text-slate-700 text-xs rounded-xl px-2.5 py-2 font-bold cursor-pointer hover:bg-slate-200 transition"
-        >
-          <option value="farmer">{t.farmerMode}</option>
-          <option value="owner">{t.ownerMode}</option>
-          <option value="fpo">{t.fpoMode}</option>
-        </select>
+        {/* View Switcher */}
+        <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
+          <button
+            onClick={() => setUserRole('farmer')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+              userRole === 'farmer'
+                ? 'bg-farm-600 text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Sprout className="w-3.5 h-3.5" />
+            {t.farmerMode}
+          </button>
+          <button
+            onClick={() => setUserRole('owner')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+              userRole === 'owner'
+                ? 'bg-chilly-600 text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Warehouse className="w-3.5 h-3.5" />
+            {t.ownerMode}
+          </button>
+        </div>
 
+        {/* Language Switcher */}
         <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
           {langButtons.map((btn) => (
             <button
@@ -75,7 +92,7 @@ export default function Header({
               onClick={() => setLang(btn.key)}
               className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
                 lang === btn.key
-                  ? 'bg-farm-600 text-white shadow-sm'
+                  ? 'bg-slate-900 text-white shadow-sm'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >

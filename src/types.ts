@@ -1,5 +1,5 @@
 export type Lang = 'en' | 'hi' | 'gu';
-export type UserRole = 'farmer' | 'owner' | 'fpo';
+export type UserRole = 'farmer' | 'owner';
 
 export interface Crop {
   id: string;
@@ -88,7 +88,36 @@ export interface TranslationDict {
   payAtFacility: string;
   ownerMode: string;
   farmerMode: string;
-  fpoMode: string;
   liveSensors: string;
   lowBandwidth: string;
+  roleFarmer: string;
+  roleFarmerDesc: string;
+  roleOwner: string;
+  roleOwnerDesc: string;
+  chooseRole: string;
+  chooseRoleDesc: string;
+  enterApp: string;
+  switchTo: string;
+  ownerDashboard: string;
+  ownerDashboardDesc: string;
+  totalCapacity: string;
+  iotStatus: string;
+  pendingRequests: string;
+  incomingBookings: string;
+  accept: string;
+  decline: string;
+  accepted: string;
+  declined: string;
+  noBookings: string;
+  loadingBookings: string;
+  statusActive: string;
+  capacityFilled: string;
+  tempOptimal: string;
+  fromFarmerGroups: string;
+  token: string;
+  estCost: string;
+  activeBookings: string;
+  completedBookings: string;
+  allBookings: string;
+  bookingsCount: string;
 }
