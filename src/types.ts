@@ -120,4 +120,21 @@ export interface TranslationDict {
   completedBookings: string;
   allBookings: string;
   bookingsCount: string;
+  loginTitle: string;
+  loginSubtitle: string;
+  enterPhone: string;
+  phonePlaceholder: string;
+  sendOtp: string;
+  enterOtp: string;
+  otpPlaceholder: string;
+  verifyLogin: string;
+  changePhone: string;
+  resendOtp: string;
+  otpSent: string;
+  otpSentDesc: string;
+  invalidOtp: string;
+  phoneRequired: string;
+  loginError: string;
+  logout: string;
+  welcomeBack: string;
 }

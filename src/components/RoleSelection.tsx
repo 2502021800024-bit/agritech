@@ -4,13 +4,38 @@ import type { Lang, TranslationDict, UserRole } from '@/types';
 interface RoleSelectionProps {
   t: TranslationDict;
   lang: Lang;
+  setLang: (lang: Lang) => void;
   onSelect: (role: UserRole) => void;
 }
 
-export default function RoleSelection({ t, onSelect }: RoleSelectionProps) {
+export default function RoleSelection({ t, lang, setLang, onSelect }: RoleSelectionProps) {
+  const langButtons: { key: Lang; label: string }[] = [
+    { key: 'hi', label: 'हिंदी' },
+    { key: 'gu', label: 'ગુજરાતી' },
+    { key: 'en', label: 'ENG' },
+  ];
+
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-8">
       <div className="max-w-2xl w-full">
+        {/* Language Selector - Top Right */}
+        <div className="flex justify-end mb-6">
+          <div className="flex bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
+            {langButtons.map((btn) => (
+              <button
+                key={btn.key}
+                onClick={() => setLang(btn.key)}
+                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition ${
+                  lang === btn.key
+                    ? 'bg-slate-900 text-white shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {btn.label}
+              </button>
+            ))}
+          </div>
+        </div>
         {/* Logo & Welcome */}
         <div className="text-center mb-8 animate-fade-in">
           <div className="w-20 h-20 bg-farm-600 rounded-3xl flex items-center justify-center text-white shadow-xl shadow-farm-600/30 mx-auto mb-4">
