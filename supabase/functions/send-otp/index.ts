@@ -25,7 +25,7 @@ Deno.serve(async (req: Request) => {
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    const { data, error } = await supabase.rpc("send_otp", { phone });
+    const { data, error } = await supabase.rpc("send_otp", { p_phone: phone });
     if (error) {
       return new Response(
         JSON.stringify({ error: error.message }),

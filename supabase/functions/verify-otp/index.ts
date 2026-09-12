@@ -26,12 +26,13 @@ Deno.serve(async (req: Request) => {
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
-    // Call verify_otp RPC
+    // Step 1: Verify OTP via RPC
     const { data: verifyResult, error: verifyError } = await adminClient.rpc("verify_otp", {
-      phone,
-      code,
-      role: role || "farmer",
+      p_phone: phone,
+      p_code: code,
+      p_role: role || "farmer",
     });
+
     if (verifyError) {
       return new Response(
         JSON.stringify({ error: verifyError.message }),
@@ -49,109 +50,49 @@ Deno.serve(async (req: Request) => {
     const email = verifyResult.email;
     const userRole = verifyResult.role || role || "farmer";
 
+    // Step 2: If new user, create auth user. If existing, update password.
+    // We use a deterministic password approach so we don't need to list users.
+    const password = phone + "_" + code + "_agristore_secret";
+
     if (verifyResult.new_user) {
-      // Create new auth user
-      const tempPassword = crypto.randomUUID() + crypto.randomUUID();
-      const { data: signUpData, error: signUpError } = await adminClient.auth.admin.createUser({
+      const { error: createError } = await adminClient.auth.admin.createUser({
         email,
-        password: tempPassword,
+        password,
         email_confirm: true,
         user_metadata: { phone, role: userRole },
       });
 
-      if (signUpError) {
+      if (createError) {
         return new Response(
-          JSON.stringify({ error: signUpError.message }),
+          JSON.stringify({ error: createError.message }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
 
       // Create user profile
-      await adminClient.from("user_profiles").upsert({
-        id: signUpData.user.id,
-        phone,
-        role: userRole,
-      });
-    }
-
-    // Sign in as the user to get a session
-    // Since we don't know the password, we use admin.generateLink with type 'recovery'
-    // then extract the token. But simpler: we'll sign in with a known password approach.
-    // Instead, let's generate a magic link token and exchange it.
-    // Actually the simplest approach: use admin.signInWithPassword won't work since we
-    // don't store the password. Let's use the anon client to sign in with email+password
-    // using the tempPassword we just set (for new users) or reset password for existing users.
-
-    // For existing users, we need to reset their password to a known value then sign in
-    const newPassword = crypto.randomUUID() + crypto.randomUUID();
-
-    const { error: updateError } = await adminClient.auth.admin.updateUserById(
-      verifyResult.user_id || verifyResult.email,
-      { password: newPassword },
-    );
-
-    // If updateError is because user doesn't exist via that ID, try by email
-    let actualUserId = verifyResult.user_id;
-
-    if (updateError) {
-      // Try to find user by email
+      // Need to get the user ID
       const { data: usersList } = await adminClient.auth.admin.listUsers();
-      const foundUser = usersList?.users?.find((u: { email: string }) => u.email === email);
-      if (foundUser) {
-        actualUserId = foundUser.id;
-        await adminClient.auth.admin.updateUserById(foundUser.id, { password: newPassword });
-      }
-    }
-
-    if (!actualUserId && verifyResult.new_user) {
-      // Get the user we just created
-      const { data: usersList2 } = await adminClient.auth.admin.listUsers();
-      const foundUser = usersList2?.users?.find((u: { email: string }) => u.email === email);
-      if (foundUser) {
-        actualUserId = foundUser.id;
-        // For new user, use the tempPassword we set during creation
-        const anonClient = createClient(supabaseUrl, anonKey);
-        const { data: signInData, error: signInError } = await anonClient.auth.signInWithPassword({
-          email,
-          password: tempPassword,
+      const newUser = usersList?.users?.find((u: { email: string }) => u.email === email);
+      if (newUser) {
+        await adminClient.from("user_profiles").upsert({
+          id: newUser.id,
+          phone,
+          role: userRole,
         });
-        if (signInError) {
-          // Fallback: try with newPassword
-          const { data: signInData2, error: signInError2 } = await anonClient.auth.signInWithPassword({
-            email,
-            password: newPassword,
-          });
-          if (signInError2) {
-            return new Response(
-              JSON.stringify({ error: "Failed to create session" }),
-              { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-            );
-          }
-          return new Response(
-            JSON.stringify({
-              success: true,
-              session: signInData2.session,
-              user: { phone, role: userRole, email },
-            }),
-            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-          );
-        }
-        return new Response(
-          JSON.stringify({
-            success: true,
-            session: signInData.session,
-            user: { phone, role: userRole, email },
-          }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
+      }
+    } else {
+      // Existing user - update their password to the deterministic one
+      const userId = verifyResult.user_id;
+      if (userId) {
+        await adminClient.auth.admin.updateUserById(userId, { password });
       }
     }
 
-    // Sign in with the new password
+    // Step 3: Sign in with the anon client to get a session
     const anonClient = createClient(supabaseUrl, anonKey);
     const { data: signInData, error: signInError } = await anonClient.auth.signInWithPassword({
       email,
-      password: newPassword,
+      password,
     });
 
     if (signInError) {

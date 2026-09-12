@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Wifi, LogOut, Phone } from 'lucide-react';
+import { Wifi, LogOut, Phone, Snowflake } from 'lucide-react';
 import { TRANSLATIONS } from '@/translations';
 import type { Lang, UserRole } from '@/types';
 import { useAuth } from '@/useAuth';
@@ -41,16 +41,17 @@ export default function App() {
     setScreen('role');
   };
 
-  // Show loading spinner while checking auth state
   if (loading && screen === 'role') {
     return (
-      <div className="min-h-screen bg-slate-100 flex items-center justify-center">
-        <div className="animate-pulse text-slate-400 font-bold text-sm">Loading...</div>
+      <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center gap-3">
+        <div className="w-14 h-14 bg-farm-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-farm-600/30 animate-pulse">
+          <Snowflake className="w-7 h-7" />
+        </div>
+        <p className="text-sm font-bold text-slate-400">{t.appName}</p>
       </div>
     );
   }
 
-  // If user has a session and lands on role or auth screen, let them through
   const effectiveRole = profile?.role ?? selectedRole;
 
   if (screen === 'role') {
@@ -86,16 +87,13 @@ export default function App() {
           userRole={effectiveRole}
           setUserRole={(role) => {
             setSelectedRole(role);
-            if (profile) {
-              // Update role in profile
-            }
           }}
           lowBandwidthMode={lowBandwidthMode}
           setLowBandwidthMode={setLowBandwidthMode}
         />
 
         {lowBandwidthMode && (
-          <div className="bg-amber-50 border border-amber-300 text-amber-900 px-4 py-2 rounded-xl mb-4 text-xs font-bold flex items-center justify-between">
+          <div className="bg-amber-50 border border-amber-300 text-amber-900 px-4 py-2 rounded-xl mb-4 text-xs font-bold flex items-center justify-between animate-fade-in">
             <span className="flex items-center gap-2">
               <Wifi className="w-4 h-4 text-amber-600" />
               {t.lowBandwidth} - Images simplified for fast load on weak farm networks.
@@ -106,9 +104,8 @@ export default function App() {
           </div>
         )}
 
-        {/* User info bar with logout */}
         {session && (
-          <div className="bg-white border border-slate-200 rounded-xl px-4 py-2 mb-4 flex items-center justify-between text-xs">
+          <div className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 mb-4 flex items-center justify-between text-xs animate-fade-in">
             <span className="flex items-center gap-2 font-bold text-slate-600">
               <Phone className="w-3.5 h-3.5 text-farm-600" />
               {profile?.phone ?? session.user.email}
@@ -123,9 +120,10 @@ export default function App() {
           </div>
         )}
 
-        {effectiveRole === 'farmer' && <FarmerView t={t} lang={lang} />}
-
-        {effectiveRole === 'owner' && <OwnerView t={t} lang={lang} />}
+        <div key={effectiveRole} className="animate-fade-in">
+          {effectiveRole === 'farmer' && <FarmerView t={t} lang={lang} />}
+          {effectiveRole === 'owner' && <OwnerView t={t} lang={lang} />}
+        </div>
 
         <Footer />
       </div>

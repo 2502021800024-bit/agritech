@@ -137,4 +137,15 @@ export interface TranslationDict {
   loginError: string;
   logout: string;
   welcomeBack: string;
+  registerTitle: string;
+  registerSubtitle: string;
+  registerBtn: string;
+  loginBtn: string;
+  newHere: string;
+  alreadyHave: string;
+  namePlaceholder: string;
+  enterName: string;
+  privacyNote: string;
+  verifying: string;
+  sending: string;
 }

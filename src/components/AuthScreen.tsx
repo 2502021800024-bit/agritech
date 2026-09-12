@@ -1,5 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
-import { Snowflake, Phone, ShieldCheck, Loader2, ArrowRight, ArrowLeft } from 'lucide-react';
+import {
+  Snowflake,
+  Phone,
+  ShieldCheck,
+  Loader2,
+  ArrowRight,
+  ArrowLeft,
+  User,
+  Lock,
+  Eye,
+  EyeOff,
+} from 'lucide-react';
 import { supabase } from '@/supabaseClient';
 import type { Lang, TranslationDict, UserRole } from '@/types';
 
@@ -13,6 +24,8 @@ interface AuthScreenProps {
 }
 
 export default function AuthScreen({ t, lang, setLang, role, onSuccess, onBack }: AuthScreenProps) {
+  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
@@ -58,6 +71,10 @@ export default function AuthScreen({ t, lang, setLang, role, onSuccess, onBack }
       setError(t.phoneRequired);
       return;
     }
+    if (mode === 'register' && !name.trim()) {
+      setError(t.phoneRequired);
+      return;
+    }
 
     setLoading(true);
     try {
@@ -74,7 +91,6 @@ export default function AuthScreen({ t, lang, setLang, role, onSuccess, onBack }
         return;
       }
 
-      // Demo mode: show the OTP code since no SMS gateway
       if (data.code) {
         setDemoOtp(data.code);
       }
@@ -109,7 +125,6 @@ export default function AuthScreen({ t, lang, setLang, role, onSuccess, onBack }
         return;
       }
 
-      // Set the session from the returned tokens
       if (data.session) {
         const { error: sessionError } = await supabase.auth.setSession({
           access_token: data.session.access_token,
@@ -119,6 +134,17 @@ export default function AuthScreen({ t, lang, setLang, role, onSuccess, onBack }
           setError(t.loginError);
           setLoading(false);
           return;
+        }
+
+        // If registering, update profile with name
+        if (mode === 'register' && name.trim()) {
+          const { data: userData } = await supabase.auth.getUser();
+          if (userData.user) {
+            await supabase
+              .from('user_profiles')
+              .update({ full_name: name.trim() })
+              .eq('id', userData.user.id);
+          }
         }
       }
       onSuccess();
@@ -135,7 +161,18 @@ export default function AuthScreen({ t, lang, setLang, role, onSuccess, onBack }
     await handleSendOtp();
   };
 
+  const switchMode = (newMode: 'login' | 'register') => {
+    setMode(newMode);
+    setStep('phone');
+    setOtp('');
+    setDemoOtp('');
+    setError('');
+  };
+
   const roleLabel = role === 'farmer' ? t.farmerMode : t.ownerMode;
+  const isRegister = mode === 'register';
+  const title = isRegister ? t.registerTitle : t.loginTitle;
+  const subtitle = isRegister ? t.registerSubtitle : t.loginSubtitle;
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-8">
@@ -146,13 +183,15 @@ export default function AuthScreen({ t, lang, setLang, role, onSuccess, onBack }
             <Snowflake className="w-8 h-8" />
           </div>
           <h1 className="text-2xl font-extrabold text-slate-900">{t.appName}</h1>
-          <p className="text-sm text-slate-500 font-medium">
-            {roleLabel} • {t.loginSubtitle}
-          </p>
+          <div className="inline-flex items-center gap-2 mt-1">
+            <span className="text-xs font-bold text-farm-700 bg-farm-100 px-2.5 py-0.5 rounded-full">
+              {roleLabel}
+            </span>
+          </div>
         </div>
 
         {/* Language Selector */}
-        <div className="flex justify-center mb-6">
+        <div className="flex justify-center mb-5">
           <div className="flex bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
             {langButtons.map((btn) => (
               <button
@@ -170,28 +209,76 @@ export default function AuthScreen({ t, lang, setLang, role, onSuccess, onBack }
           </div>
         </div>
 
+        {/* Mode Toggle */}
+        <div className="flex bg-white p-1 rounded-xl border border-slate-200 shadow-sm mb-5 mx-auto max-w-[280px]">
+          <button
+            onClick={() => switchMode('login')}
+            className={`flex-1 py-2 rounded-lg text-sm font-extrabold transition flex items-center justify-center gap-1.5 ${
+              !isRegister
+                ? 'bg-farm-600 text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Lock className="w-3.5 h-3.5" />
+            {t.loginBtn}
+          </button>
+          <button
+            onClick={() => switchMode('register')}
+            className={`flex-1 py-2 rounded-lg text-sm font-extrabold transition flex items-center justify-center gap-1.5 ${
+              isRegister
+                ? 'bg-farm-600 text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <User className="w-3.5 h-3.5" />
+            {t.registerBtn}
+          </button>
+        </div>
+
         {/* Auth Card */}
         <div className="bg-white rounded-3xl p-7 border border-slate-200 shadow-lg animate-slide-up">
+          {/* Title */}
+          <h2 className="text-xl font-extrabold text-slate-900 mb-1 text-center">{title}</h2>
+          <p className="text-xs text-slate-500 font-medium mb-5 text-center">{subtitle}</p>
+
           {step === 'phone' ? (
             <>
-              <div className="flex items-center gap-2 mb-1">
-                <Phone className="w-5 h-5 text-farm-600" />
-                <h2 className="text-lg font-extrabold text-slate-900">{t.enterPhone}</h2>
-              </div>
-              <p className="text-xs text-slate-500 font-medium mb-4">{t.loginSubtitle}</p>
+              {/* Name field for register */}
+              {isRegister && (
+                <div className="relative mb-3">
+                  <User className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder={t.namePlaceholder}
+                    className="w-full text-sm border-2 border-slate-300 rounded-2xl pl-11 pr-4 py-3 focus:border-farm-500 focus:ring-2 focus:ring-farm-500/20 outline-none transition"
+                  />
+                </div>
+              )}
 
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSendOtp()}
-                placeholder={t.phonePlaceholder}
-                className="w-full text-base border-2 border-slate-300 rounded-2xl px-4 py-3.5 focus:border-farm-500 focus:ring-2 focus:ring-farm-500/20 outline-none transition mb-3"
-                autoFocus
-              />
+              {/* Phone input */}
+              <div className="relative mb-3">
+                <Phone className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSendOtp()}
+                  placeholder={t.phonePlaceholder}
+                  className="w-full text-sm border-2 border-slate-300 rounded-2xl pl-11 pr-4 py-3 focus:border-farm-500 focus:ring-2 focus:ring-farm-500/20 outline-none transition"
+                  autoFocus
+                />
+              </div>
+
+              {/* Privacy note */}
+              <div className="flex items-center gap-1.5 mb-4 text-slate-400">
+                <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                <p className="text-[11px] font-medium">{t.privacyNote}</p>
+              </div>
 
               {error && (
-                <p className="text-xs font-bold text-red-600 mb-3 bg-red-50 px-3 py-2 rounded-lg">
+                <p className="text-xs font-bold text-red-600 mb-3 bg-red-50 px-3 py-2 rounded-lg animate-fade-in">
                   {error}
                 </p>
               )}
@@ -199,10 +286,13 @@ export default function AuthScreen({ t, lang, setLang, role, onSuccess, onBack }
               <button
                 onClick={handleSendOtp}
                 disabled={loading}
-                className="w-full bg-farm-600 hover:bg-farm-700 active:scale-95 text-white font-extrabold py-3.5 rounded-2xl text-base shadow-lg shadow-farm-600/30 flex items-center justify-center gap-2 transition disabled:opacity-50 cursor-pointer"
+                className="w-full bg-farm-600 hover:bg-farm-700 active:scale-[0.98] text-white font-extrabold py-3.5 rounded-2xl text-base shadow-lg shadow-farm-600/30 flex items-center justify-center gap-2 transition disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
               >
                 {loading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    {t.sending}
+                  </>
                 ) : (
                   <>
                     {t.sendOtp}
@@ -213,21 +303,23 @@ export default function AuthScreen({ t, lang, setLang, role, onSuccess, onBack }
             </>
           ) : (
             <>
-              <div className="flex items-center gap-2 mb-1">
-                <ShieldCheck className="w-5 h-5 text-farm-600" />
-                <h2 className="text-lg font-extrabold text-slate-900">{t.enterOtp}</h2>
+              {/* OTP step */}
+              <div className="text-center mb-4">
+                <div className="w-14 h-14 bg-farm-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                  <ShieldCheck className="w-7 h-7 text-farm-600" />
+                </div>
+                <p className="text-sm font-bold text-slate-700">{t.otpSent}</p>
+                <p className="text-xs text-slate-500 mt-0.5">{formatPhone(phone)}</p>
               </div>
-              <p className="text-xs text-slate-500 font-medium mb-4">
-                {t.otpSentDesc} • {formatPhone(phone)}
-              </p>
 
               {demoOtp && (
                 <div className="bg-amber-50 border border-amber-300 text-amber-900 px-4 py-2.5 rounded-xl mb-4 text-center animate-fade-in">
                   <p className="text-xs font-bold">
-                    Demo Mode: Your OTP is <span className="text-lg font-black tracking-widest">{demoOtp}</span>
+                    Demo: Your OTP is{' '}
+                    <span className="text-lg font-black tracking-widest">{demoOtp}</span>
                   </p>
                   <p className="text-[10px] text-amber-700 mt-0.5">
-                    (No SMS gateway configured — in production this would be sent via SMS)
+                    (No SMS gateway — in production this would be sent via SMS)
                   </p>
                 </div>
               )}
@@ -240,12 +332,12 @@ export default function AuthScreen({ t, lang, setLang, role, onSuccess, onBack }
                 onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
                 onKeyDown={(e) => e.key === 'Enter' && handleVerifyOtp()}
                 placeholder={t.otpPlaceholder}
-                className="w-full text-2xl font-black tracking-[0.5em] text-center border-2 border-slate-300 rounded-2xl px-4 py-3.5 focus:border-farm-500 focus:ring-2 focus:ring-farm-500/20 outline-none transition mb-3"
+                className="w-full text-2xl font-black tracking-[0.4em] text-center border-2 border-slate-300 rounded-2xl px-4 py-3.5 focus:border-farm-500 focus:ring-2 focus:ring-farm-500/20 outline-none transition mb-3"
                 autoFocus
               />
 
               {error && (
-                <p className="text-xs font-bold text-red-600 mb-3 bg-red-50 px-3 py-2 rounded-lg">
+                <p className="text-xs font-bold text-red-600 mb-3 bg-red-50 px-3 py-2 rounded-lg animate-fade-in">
                   {error}
                 </p>
               )}
@@ -253,10 +345,13 @@ export default function AuthScreen({ t, lang, setLang, role, onSuccess, onBack }
               <button
                 onClick={handleVerifyOtp}
                 disabled={loading || otp.length !== 6}
-                className="w-full bg-farm-600 hover:bg-farm-700 active:scale-95 text-white font-extrabold py-3.5 rounded-2xl text-base shadow-lg shadow-farm-600/30 flex items-center justify-center gap-2 transition disabled:opacity-50 cursor-pointer mb-3"
+                className="w-full bg-farm-600 hover:bg-farm-700 active:scale-[0.98] text-white font-extrabold py-3.5 rounded-2xl text-base shadow-lg shadow-farm-600/30 flex items-center justify-center gap-2 transition disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer mb-3"
               >
                 {loading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    {t.verifying}
+                  </>
                 ) : (
                   <>
                     {t.verifyLogin}
@@ -288,14 +383,27 @@ export default function AuthScreen({ t, lang, setLang, role, onSuccess, onBack }
               </div>
             </>
           )}
+
+          {/* Mode switch link at bottom */}
+          <div className="text-center mt-5 pt-4 border-t border-slate-100">
+            <button
+              onClick={() => switchMode(isRegister ? 'login' : 'register')}
+              className="text-xs font-bold text-farm-700 hover:text-farm-800 transition"
+            >
+              {isRegister ? t.alreadyHave : t.newHere}{' '}
+              <span className="underline">
+                {isRegister ? t.loginBtn : t.registerBtn}
+              </span>
+            </button>
+          </div>
         </div>
 
         {/* Back to role selection */}
         <button
           onClick={onBack}
-          className="w-full text-center text-xs font-bold text-slate-400 hover:text-slate-600 mt-4 transition"
+          className="w-full text-center text-xs font-bold text-slate-400 hover:text-slate-600 mt-4 transition flex items-center justify-center gap-1"
         >
-          <ArrowLeft className="w-3.5 h-3.5 inline mr-1" />
+          <ArrowLeft className="w-3.5 h-3.5" />
           {t.chooseRole}
         </button>
       </div>
